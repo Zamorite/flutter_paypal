@@ -2,29 +2,29 @@ library flutter_paypal;
 
 import 'dart:async';
 import 'dart:core';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_paypal/src/screens/complete_payment.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'src/PaypalServices.dart';
 import 'src/errors/network_error.dart';
 
-class UsePaypal extends StatefulWidget {
+class UsePaypalSubscription extends StatefulWidget {
   final Function onSuccess, onCancel, onError;
-  final String returnURL, cancelURL, note, clientId, secretKey;
-  final List transactions;
+  final String returnURL, cancelURL, note, clientId, secretKey, planID;
   final bool sandboxMode;
-  const UsePaypal({
+
+  const UsePaypalSubscription({
     Key? key,
     required this.onSuccess,
     required this.onError,
     required this.onCancel,
     required this.returnURL,
     required this.cancelURL,
-    required this.transactions,
+    required this.planID,
     required this.clientId,
     required this.secretKey,
     this.sandboxMode = false,
@@ -33,11 +33,11 @@ class UsePaypal extends StatefulWidget {
 
   @override
   State<StatefulWidget> createState() {
-    return UsePaypalState();
+    return UsePaypalSubscriptionState();
   }
 }
 
-class UsePaypalState extends State<UsePaypal> {
+class UsePaypalSubscriptionState extends State<UsePaypalSubscription> {
   final Completer<WebViewController> _controller =
       Completer<WebViewController>();
 
@@ -54,14 +54,14 @@ class UsePaypalState extends State<UsePaypal> {
 
   Map getOrderParams() {
     Map<String, dynamic> temp = {
-      "intent": "sale",
-      "payer": {"payment_method": "paypal"},
-      "transactions": widget.transactions,
-      "note_to_payer": widget.note,
-      "redirect_urls": {
-        "return_url": widget.returnURL,
-        "cancel_url": widget.cancelURL
-      }
+      // "intent": "sale",
+      // "payer": {"payment_method": "paypal"},
+      "plan_id": widget.planID,
+      // "note_to_payer": widget.note,
+      // "redirect_urls": {
+      //   "return_url": widget.returnURL,
+      //   "cancel_url": widget.cancelURL
+      // }
     };
     return temp;
   }
@@ -72,20 +72,26 @@ class UsePaypalState extends State<UsePaypal> {
     });
     try {
       Map getToken = await services.getAccessToken();
+
       if (getToken['token'] != null) {
         accessToken = getToken['token'];
-        final transactions = getOrderParams();
-        final res =
-            await services.createPaypalPayment(transactions, accessToken);
+
+        final details = getOrderParams();
+
+        final res = await services.createSubscription(details, accessToken);
+
         if (res["approvalUrl"] != null) {
           setState(() {
             checkoutUrl = res["approvalUrl"].toString();
             navUrl = res["approvalUrl"].toString();
-            executeUrl = res["executeUrl"].toString();
+            // executeUrl = res["executeUrl"].toString();
+
             loading = false;
             pageloading = false;
             loadingError = false;
           });
+
+          // Navigator.pop(context);
         } else {
           widget.onError(res);
           setState(() {
@@ -247,29 +253,23 @@ class UsePaypalState extends State<UsePaypal> {
                             ]).toSet(),
                             navigationDelegate:
                                 (NavigationRequest request) async {
+                              log(request.url, name: 'Redirection');
+
                               if (request.url
                                   .startsWith('https://www.youtube.com/')) {
                                 return NavigationDecision.prevent;
-                              }
-                              if (request.url.contains(widget.returnURL)) {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => CompletePayment(
-                                          url: request.url,
-                                          services: services,
-                                          executeUrl: executeUrl,
-                                          accessToken: accessToken,
-                                          onSuccess: widget.onSuccess,
-                                          onCancel: widget.onCancel,
-                                          onError: widget.onError)),
-                                );
-                              }
-                              if (request.url.contains(widget.cancelURL)) {
+                              } else if (request.url
+                                  .contains(widget.returnURL)) {
+                                final uri = Uri.parse(request.url);
+                                await widget.onSuccess(uri.queryParameters);
+                                Navigator.of(context).pop();
+                              } else if (request.url
+                                  .contains(widget.cancelURL)) {
                                 final uri = Uri.parse(request.url);
                                 await widget.onCancel(uri.queryParameters);
                                 Navigator.of(context).pop();
                               }
+
                               return NavigationDecision.navigate;
                             },
                             onPageStarted: (String url) {
