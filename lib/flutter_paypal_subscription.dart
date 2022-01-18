@@ -52,6 +52,9 @@ class UsePaypalSubscriptionState extends State<UsePaypalSubscription> {
 
   int pressed = 0;
 
+  bool awaitingLastRedirection = false;
+  bool loadingLastPage = false;
+
   Map getOrderParams() {
     Map<String, dynamic> temp = {
       // "intent": "sale",
@@ -271,6 +274,14 @@ class UsePaypalSubscriptionState extends State<UsePaypalSubscription> {
                                   Navigator.of(context).pop();
                                 }
 
+                                if (awaitingLastRedirection) {
+                                  loadingLastPage = true;
+                                }
+
+                                if (request.url.contains('/checkout/end')) {
+                                  awaitingLastRedirection = true;
+                                }
+
                                 return NavigationDecision.navigate;
                               },
                               onPageStarted: (String url) {
@@ -279,11 +290,24 @@ class UsePaypalSubscriptionState extends State<UsePaypalSubscription> {
                                   loadingError = false;
                                 });
                               },
-                              onPageFinished: (String url) {
-                                setState(() {
-                                  navUrl = url;
-                                  pageloading = false;
-                                });
+                              onPageFinished: (String url) async {
+                                setState(
+                                  () async {
+                                    navUrl = url;
+
+                                    if (loadingLastPage) {
+                                      Future.delayed(
+                                        const Duration(milliseconds: 5000),
+                                        () async {
+                                          await widget.onSuccess({});
+                                          Navigator.of(context).pop();
+                                        },
+                                      );
+                                    }
+
+                                    pageloading = false;
+                                  },
+                                );
                               },
                             ),
                           ),
