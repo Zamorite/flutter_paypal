@@ -209,85 +209,87 @@ class UsePaypalSubscriptionState extends State<UsePaypalSubscription> {
           ),
           elevation: 0,
         ),
-        body: SizedBox(
-          height: MediaQuery.of(context).size.height,
-          width: MediaQuery.of(context).size.width,
-          child: loading
-              ? Column(
-                  children: const [
-                    Expanded(
-                      child: Center(
-                        child: SpinKitFadingCube(
-                          color: Color(0xFFEB920D),
-                          size: 30.0,
+        body: SingleChildScrollView(
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height,
+            width: MediaQuery.of(context).size.width,
+            child: loading
+                ? Column(
+                    children: const [
+                      Expanded(
+                        child: Center(
+                          child: SpinKitFadingCube(
+                            color: Color(0xFFEB920D),
+                            size: 30.0,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                )
-              : loadingError
-                  ? Column(
-                      children: [
-                        Expanded(
-                          child: Center(
-                            child: NetworkError(
-                                loadData: loadPayment,
-                                message: "Something went wrong,"),
+                    ],
+                  )
+                : loadingError
+                    ? Column(
+                        children: [
+                          Expanded(
+                            child: Center(
+                              child: NetworkError(
+                                  loadData: loadPayment,
+                                  message: "Something went wrong,"),
+                            ),
                           ),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        Expanded(
-                          child: WebView(
-                            initialUrl: checkoutUrl,
-                            javascriptMode: JavascriptMode.unrestricted,
-                            gestureNavigationEnabled: true,
-                            onWebViewCreated:
-                                (WebViewController webViewController) {
-                              _controller.complete(webViewController);
-                            },
-                            javascriptChannels: (<JavascriptChannel>[
-                              _toasterJavascriptChannel(context),
-                            ]).toSet(),
-                            navigationDelegate:
-                                (NavigationRequest request) async {
-                              log(request.url, name: 'Redirection');
+                        ],
+                      )
+                    : Column(
+                        children: [
+                          Expanded(
+                            child: WebView(
+                              initialUrl: checkoutUrl,
+                              javascriptMode: JavascriptMode.unrestricted,
+                              gestureNavigationEnabled: true,
+                              onWebViewCreated:
+                                  (WebViewController webViewController) {
+                                _controller.complete(webViewController);
+                              },
+                              javascriptChannels: (<JavascriptChannel>[
+                                _toasterJavascriptChannel(context),
+                              ]).toSet(),
+                              navigationDelegate:
+                                  (NavigationRequest request) async {
+                                log(request.url, name: 'Redirection');
 
-                              if (request.url
-                                  .startsWith('https://www.youtube.com/')) {
-                                return NavigationDecision.prevent;
-                              } else if (request.url
-                                  .contains(widget.returnURL)) {
-                                final uri = Uri.parse(request.url);
-                                await widget.onSuccess(uri.queryParameters);
-                                Navigator.of(context).pop();
-                              } else if (request.url
-                                  .contains(widget.cancelURL)) {
-                                final uri = Uri.parse(request.url);
-                                await widget.onCancel(uri.queryParameters);
-                                Navigator.of(context).pop();
-                              }
+                                if (request.url
+                                    .startsWith('https://www.youtube.com/')) {
+                                  return NavigationDecision.prevent;
+                                } else if (request.url
+                                    .contains(widget.returnURL)) {
+                                  final uri = Uri.parse(request.url);
+                                  await widget.onSuccess(uri.queryParameters);
+                                  Navigator.of(context).pop();
+                                } else if (request.url
+                                    .contains(widget.cancelURL)) {
+                                  final uri = Uri.parse(request.url);
+                                  await widget.onCancel(uri.queryParameters);
+                                  Navigator.of(context).pop();
+                                }
 
-                              return NavigationDecision.navigate;
-                            },
-                            onPageStarted: (String url) {
-                              setState(() {
-                                pageloading = true;
-                                loadingError = false;
-                              });
-                            },
-                            onPageFinished: (String url) {
-                              setState(() {
-                                navUrl = url;
-                                pageloading = false;
-                              });
-                            },
+                                return NavigationDecision.navigate;
+                              },
+                              onPageStarted: (String url) {
+                                setState(() {
+                                  pageloading = true;
+                                  loadingError = false;
+                                });
+                              },
+                              onPageFinished: (String url) {
+                                setState(() {
+                                  navUrl = url;
+                                  pageloading = false;
+                                });
+                              },
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+          ),
         ),
       ),
     );
