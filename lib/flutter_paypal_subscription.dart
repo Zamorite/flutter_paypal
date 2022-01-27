@@ -54,6 +54,7 @@ class UsePaypalSubscriptionState extends State<UsePaypalSubscription> {
 
   bool awaitingLastRedirection = false;
   bool loadingLastPage = false;
+  bool paymentComplete = false;
 
   Map getOrderParams() {
     Map<String, dynamic> temp = {
@@ -274,7 +275,10 @@ class UsePaypalSubscriptionState extends State<UsePaypalSubscription> {
                                   Navigator.of(context).pop();
                                 }
 
-                                if (awaitingLastRedirection) {
+                                if (awaitingLastRedirection ||
+                                    (Platform.isAndroid &&
+                                        request.url.contains(
+                                            '/billing/subscriptions?ba_token'))) {
                                   loadingLastPage = true;
                                 }
 
@@ -291,23 +295,30 @@ class UsePaypalSubscriptionState extends State<UsePaypalSubscription> {
                                 });
                               },
                               onPageFinished: (String url) async {
-                                setState(
-                                  () async {
-                                    navUrl = url;
+                                WidgetsBinding.instance
+                                    ?.addPostFrameCallback((timeStamp) async {
+                                  navUrl = url;
 
-                                    if (loadingLastPage) {
-                                      Future.delayed(
-                                        const Duration(milliseconds: 5000),
-                                        () async {
+                                  if (loadingLastPage) {
+                                    await Future.delayed(
+                                      const Duration(milliseconds: 5000),
+                                      () async {
+                                        if (!paymentComplete) {
+                                          paymentComplete = true;
+
                                           await widget.onSuccess({});
                                           Navigator.of(context).pop();
-                                        },
-                                      );
-                                    }
+                                        }
+                                      },
+                                    );
+                                  }
 
-                                    pageloading = false;
-                                  },
-                                );
+                                  pageloading = false;
+
+                                  if (!paymentComplete) {
+                                    setState(() => 0);
+                                  }
+                                });
                               },
                             ),
                           ),
