@@ -129,7 +129,7 @@ class UsePaypalState extends State<UsePaypal> {
     setState(() {
       navUrl = widget.sandboxMode
           ? 'https://api.sandbox.paypal.com'
-          : 'https://www.api.paypal.com';
+          : 'https://api.paypal.com';
     });
     // Enable hybrid composition.
     if (Platform.isAndroid) WebView.platform = SurfaceAndroidWebView();
